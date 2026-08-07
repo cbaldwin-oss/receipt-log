@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#F1E8D6">
+<title>Receipt Capturer — Field Ledger</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M14,4 H50 V50 L44,56 L38,50 L32,56 L26,50 L20,56 L14,50 Z' fill='%23F1E8D6' stroke='%23212B3D' stroke-width='3' stroke-linejoin='round'/%3E%3Cline x1='20' y1='14' x2='44' y2='14' stroke='%23212B3D' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='20' y1='22' x2='44' y2='22' stroke='%23212B3D' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='20' y1='30' x2='38' y2='30' stroke='%23212B3D' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='44' cy='40' r='11' fill='%23E0A63E' stroke='%23212B3D' stroke-width='2.5'/%3E%3Cpath d='M39,40 L43,44 L50,36' fill='none' stroke='%23212B3D' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23F1E8D6'/%3E%3Cpath d='M17,7 H47 V47 L42,52 L37,47 L32,52 L27,47 L22,52 L17,47 Z' fill='%23F1E8D6' stroke='%23212B3D' stroke-width='3' stroke-linejoin='round'/%3E%3Cline x1='22' y1='16' x2='42' y2='16' stroke='%23212B3D' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='22' y1='23' x2='42' y2='23' stroke='%23212B3D' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='22' y1='30' x2='36' y2='30' stroke='%23212B3D' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='41' cy='38' r='10' fill='%23E0A63E' stroke='%23212B3D' stroke-width='2.5'/%3E%3Cpath d='M37,38 L40,41 L46,34' fill='none' stroke='%23212B3D' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #F1E8D6;
+    --paper-dark: #E6D9BE;
+    --ink: #212B3D;
+    --ink-soft: #4B5568;
+    --kraft: #B98A55;
+    --kraft-dark: #8B6239;
+    --stamp-red: #AF3A30;
+    --stamp-green: #3E6B4F;
+    --accent-bright: #E0A63E;
+    --accent-bright-dark: #C4872A;
+    --line: rgba(33,43,61,0.16);
+    --line-strong: rgba(33,43,61,0.32);
+    --white: #FBF7EE;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: var(--paper);
+    background-image:
+      radial-gradient(circle at 10% -10%, rgba(255,255,255,0.5), transparent 40%),
+      repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(33,43,61,0.035) 28px);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app{ max-width: 980px; margin: 0 auto; padding: 32px 20px 64px; }
+  header.masthead{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    border-bottom: 3px double var(--line-strong);
+    padding-bottom: 14px; margin-bottom: 28px; flex-wrap: wrap; gap: 10px;
+  }
+  .eyebrow{
+    font-family:'Space Mono', monospace; font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color: var(--kraft-dark); margin:0 0 4px;
+  }
+  h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size: clamp(28px,4vw,40px);
+    margin:0; letter-spacing:-0.01em;
+  }
+  .masthead .meta{ text-align:right; font-family:'Space Mono',monospace; font-size:12px; color: var(--ink-soft); }
+  .layout{ display:grid; grid-template-columns: 1.5fr 1fr; gap:22px; align-items:start; }
+  @media (max-width: 760px){ .layout{ grid-template-columns: 1fr; } }
+  .card{
+    background: var(--white);
+    border: 1px solid var(--line-strong);
+    box-shadow: 4px 4px 0 rgba(33,43,61,0.06);
+    padding: 22px;
+    position: relative;
+  }
+  .card h2{
+    font-family:'Fraunces', serif; font-size:19px; margin:0 0 16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .tag{
+    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; border:1px solid var(--line-strong); padding:2px 6px;
+    color: var(--ink-soft);
+  }
+  .slots{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:20px; }
+  @media (max-width: 520px){ .slots{ grid-template-columns:1fr; } }
+  .slot{
+    border: 2px dashed var(--line-strong);
+    padding: 12px; min-height: 190px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:8px; position:relative; background: repeating-linear-gradient(135deg, rgba(33,43,61,0.02) 0 10px, transparent 10px 20px);
+  }
+  .slot.filled{ border-style: solid; border-color: var(--kraft); }
+  .slot .label{ font-family:'Space Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color: var(--ink-soft); }
+  .slot .req{ color: var(--stamp-red); }
+  .slot img{ max-width:100%; max-height:130px; object-fit:contain; border:1px solid var(--line); background:#fff; }
+  .slot .dims{ font-family:'Space Mono',monospace; font-size:10px; color: var(--ink-soft); }
+  .slot .status-ok{ color: var(--stamp-green); font-family:'Space Mono',monospace; font-size:10px; font-weight:700; }
+  .slot .status-bad{ color: var(--stamp-red); font-family:'Space Mono',monospace; font-size:10px; font-weight:700; }
+  .slot-buttons{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+  button{ font-family:'Inter',sans-serif; cursor:pointer; }
+  .btn{
+    background: var(--ink); color: var(--white); border:none; padding:9px 14px;
+    font-size:13px; font-weight:600; letter-spacing:.01em;
+  }
+  .btn:hover{ background:#37455e; }
+  .btn.secondary{ background:transparent; color: var(--ink); border:1px solid var(--line-strong); }
+  .btn.secondary:hover{ background: rgba(33,43,61,0.05); }
+  .btn.small{ padding:8px 12px; font-size:12px; min-height:36px; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn.bright{ background: var(--accent-bright); color: var(--ink); border:1px solid var(--accent-bright-dark); font-weight:700; }
+  .btn.bright:hover{ background: var(--accent-bright-dark); color: var(--white); }
+  .fields{ display:flex; flex-direction:column; gap:14px; margin-bottom:18px; }
+  .field label{ display:block; font-family:'Space Mono',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color: var(--ink-soft); margin-bottom:5px; }
+  .field input{
+    width:100%; padding:12px 11px; border:1px solid var(--line-strong); background:var(--paper);
+    font-family:'Inter',sans-serif; font-size:16px; color:var(--ink);
+  }
+  .field input:focus{ outline:2px solid var(--kraft); outline-offset:1px; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:520px){ .row2{ grid-template-columns:1fr; } }
+  #submitBtn{ width:100%; padding:14px; font-size:14px; letter-spacing:.03em; text-transform:uppercase; }
+  #statusMsg{ margin-top:12px; font-family:'Space Mono',monospace; font-size:12px; min-height:16px; }
+  #statusMsg.ok{ color: var(--stamp-green); }
+  #statusMsg.err{ color: var(--stamp-red); }
+
+  /* drive card */
+  .breadcrumb{ font-family:'Space Mono',monospace; font-size:12px; line-height:1.8; color: var(--ink-soft); margin-bottom:16px; }
+  .breadcrumb .active{ color: var(--ink); font-weight:700; }
+  .conn-state{ display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:13px; }
+  .dot{ width:8px; height:8px; border-radius:50%; background: var(--stamp-red); flex-shrink:0; }
+  .dot.on{ background: var(--stamp-green); }
+  .hint{ font-size:11px; color: var(--ink-soft); line-height:1.5; margin-top:8px; }
+  .stamp{
+    position:absolute; top:18px; right:18px; border:3px solid var(--stamp-green); color: var(--stamp-green);
+    font-family:'Space Mono',monospace; font-weight:700; padding:5px 10px; transform: rotate(-8deg);
+    opacity:0; transition: opacity .25s ease; pointer-events:none; letter-spacing:.06em; font-size:13px;
+  }
+  .stamp.show{ opacity:1; }
+  .folder-list{ font-family:'Space Mono',monospace; font-size:11px; color: var(--ink-soft); margin-top:10px; max-height:110px; overflow-y:auto; }
+  input[type=file]{ display:none; }
+
+  /* crop modal */
+  .crop-modal{ position:fixed; inset:0; background:rgba(33,43,61,0.75); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+  .crop-modal.show{ display:flex; }
+  .crop-modal-inner{ background:var(--white); border:1px solid var(--line-strong); padding:18px; max-width:560px; width:100%; }
+  .crop-title{ font-family:'Fraunces', serif; font-size:17px; margin:0 0 4px; }
+  .crop-hint{ font-size:12px; color: var(--ink-soft); margin:0 0 14px; }
+  .crop-stage{ position:relative; max-width:100%; margin:0 auto; touch-action:none; user-select:none; line-height:0; }
+  .crop-stage img{ max-width:100%; max-height:56vh; display:block; margin:0 auto; pointer-events:none; -webkit-user-drag:none; }
+  .crop-box{ position:absolute; border:2px solid var(--kraft); box-shadow:0 0 0 9999px rgba(33,43,61,0.55); touch-action:none; }
+  .crop-handle{ position:absolute; width:26px; height:26px; margin:-13px; background:var(--kraft); border:3px solid var(--white); border-radius:50%; touch-action:none; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+  .crop-handle[data-h="tl"]{ top:0; left:0; cursor:nwse-resize; }
+  .crop-handle[data-h="tr"]{ top:0; left:100%; cursor:nesw-resize; }
+  .crop-handle[data-h="bl"]{ top:100%; left:0; cursor:nesw-resize; }
+  .crop-handle[data-h="br"]{ top:100%; left:100%; cursor:nwse-resize; }
+  .crop-actions{ display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  .crop-actions .spacer{ flex:1; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Field Ledger — Expense Filing</p>
+      <h1>Receipt Capturer</h1>
+    </div>
+    <div class="meta" id="todayMeta"></div>
+  </header>
+
+  <div class="layout">
+    <!-- CAPTURE CARD -->
+    <section class="card">
+      <h2>File a Receipt <span class="tag">01</span></h2>
+
+      <div class="slots">
+        <div class="slot" id="frontSlot">
+          <div class="label">Front <span class="req">— required</span></div>
+          <div class="preview" id="frontPreview"></div>
+          <div class="slot-buttons">
+            <input type="file" accept="image/*" capture="environment" id="frontCaptureInput">
+            <input type="file" accept="image/*" id="frontChooseInput">
+            <button type="button" class="btn small" id="frontTakeBtn">Take photo</button>
+            <button type="button" class="btn secondary small" id="frontChooseBtn">Choose photo</button>
+            <button type="button" class="btn small bright" id="frontCropBtn" style="display:none;">Crop</button>
+            <button type="button" class="btn secondary small" id="frontRotateBtn" style="display:none;">Rotate</button>
+          </div>
+        </div>
+        <div class="slot" id="backSlot">
+          <div class="label">Back <span style="color:var(--ink-soft)">— optional</span></div>
+          <div class="preview" id="backPreview"></div>
+          <div class="slot-buttons">
+            <input type="file" accept="image/*" capture="environment" id="backCaptureInput">
+            <input type="file" accept="image/*" id="backChooseInput">
+            <button type="button" class="btn small" id="backTakeBtn">Take photo</button>
+            <button type="button" class="btn secondary small" id="backChooseBtn">Choose photo</button>
+            <button type="button" class="btn small bright" id="backCropBtn" style="display:none;">Crop</button>
+            <button type="button" class="btn secondary small" id="backRotateBtn" style="display:none;">Rotate</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fields">
+        <div class="field">
+          <label for="dateInput">Date</label>
+          <input type="date" id="dateInput">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="whereInput">Where</label>
+            <input type="text" id="whereInput" placeholder="e.g. Ace Hardware">
+          </div>
+          <div class="field">
+            <label for="whatInput">What it's for</label>
+            <input type="text" id="whatInput" placeholder="e.g. Office supplies">
+          </div>
+        </div>
+      </div>
+
+      <button class="btn" id="submitBtn">File receipt</button>
+      <div id="statusMsg"></div>
+    </section>
+
+    <!-- DRIVE CARD -->
+    <aside class="card">
+      <h2>My Receipts <span class="tag">02</span></h2>
+      <div class="stamp" id="filedStamp">FILED</div>
+
+      <div class="conn-state">
+        <span class="dot" id="connDot"></span>
+        <span id="connLabel">Not connected to Google Drive</span>
+      </div>
+      <button class="btn secondary small" id="connectBtn">Authorize Google Drive</button>
+
+      <div class="breadcrumb" id="breadcrumb">
+        My Receipts /<br>
+        <span class="active" id="periodLabel">—</span>
+      </div>
+
+      <div class="folder-list" id="folderNote"></div>
+    </aside>
+  </div>
+
+  <div class="crop-modal" id="cropModal">
+    <div class="crop-modal-inner">
+      <p class="crop-title">Crop to the receipt</p>
+      <p class="crop-hint">Drag the corners to fit just the receipt, then apply.</p>
+      <div class="crop-stage" id="cropStage">
+        <img id="cropImg" draggable="false" alt="">
+        <div class="crop-box" id="cropBox">
+          <div class="crop-handle" data-h="tl"></div>
+          <div class="crop-handle" data-h="tr"></div>
+          <div class="crop-handle" data-h="bl"></div>
+          <div class="crop-handle" data-h="br"></div>
+        </div>
+      </div>
+      <div class="crop-actions">
+        <button type="button" class="btn small bright" id="cropAutoBtn">Auto-fit</button>
+        <button type="button" class="btn secondary small" id="cropResetBtn">Full photo</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn secondary small" id="cropCancelBtn">Cancel</button>
+        <button type="button" class="btn small bright" id="cropApplyBtn">Apply crop</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Config ----------
+     No client secrets or IDs live here anymore — the OAuth flow and token
+     refresh happen entirely on the backend (see /functions/api). The page
+     only ever talks to its own /api/* endpoints. */
+  const MIN_LONG_EDGE = 1200, MIN_SHORT_EDGE = 600, MAX_FILE_MB = 15;
+
+  let accessToken = null, tokenExpiresAt = 0;
+  let receiptsFolderId = null;
+
+  const state = {
+    front: null, // {dataUrl, width, height, sizeMB, rotation}
+    back: null
+  };
+
+  /* ---------- Date / period helpers ---------- */
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function fmt(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+  function periodForDate(dateStr){
+    const [y,m,d] = dateStr.split('-').map(Number);
+    let start, end;
+    if(d >= 18){
+      start = new Date(y, m-1, 18);
+      end   = new Date(y, m, 17);
+    } else {
+      start = new Date(y, m-2, 18);
+      end   = new Date(y, m-1, 17);
+    }
+    return { label: `${fmt(start)} to ${fmt(end)}`, start, end };
+  }
+
+  function todayStr(){ return fmt(new Date()); }
+
+  const dateInput = document.getElementById('dateInput');
+  dateInput.value = todayStr();
+  document.getElementById('todayMeta').textContent = "Today: " + todayStr();
+
+  function refreshPeriodLabel(){
+    const val = dateInput.value || todayStr();
+    document.getElementById('periodLabel').textContent = periodForDate(val).label;
+  }
+  dateInput.addEventListener('change', refreshPeriodLabel);
+  refreshPeriodLabel();
+
+  /* ---------- Photo capture + sizing verification ---------- */
+  const renderers = {}; // which -> renderSlot function, so the crop modal can refresh a slot after applying
+
+  function dataUrlSizeMB(dataUrl){
+    const base64 = dataUrl.split(',')[1] || '';
+    return (base64.length * 3/4) / (1024*1024);
+  }
+
+  function loadImage(dataUrl){
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.src = dataUrl;
+    });
+  }
+
+  // Crops `original` down to `rect` (fractional 0..1) and stores the result
+  // as the slot's working photo, keeping `original` untouched so later crop
+  // adjustments (or a rotate) always work from the full, uncropped photo.
+  function applyCropToSlot(which, rect, imgEl){
+    const s = state[which];
+    const nw = imgEl.naturalWidth, nh = imgEl.naturalHeight;
+    const sx = Math.round(rect.x0*nw), sy = Math.round(rect.y0*nh);
+    const sw = Math.max(1, Math.round((rect.x1-rect.x0)*nw));
+    const sh = Math.max(1, Math.round((rect.y1-rect.y0)*nh));
+    const canvas = document.createElement('canvas');
+    canvas.width = sw; canvas.height = sh;
+    canvas.getContext('2d').drawImage(imgEl, sx, sy, sw, sh, 0, 0, sw, sh);
+    const newDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    s.dataUrl = newDataUrl; s.width = sw; s.height = sh;
+    s.sizeMB = dataUrlSizeMB(newDataUrl);
+    s.cropRect = { ...rect };
+  }
+
+  // Like a scanning app: as soon as a photo lands, guess where the receipt
+  // is against the background and crop to it automatically. The user can
+  // still open Crop to nudge the box if the guess is off.
+  async function autoCropSlot(which){
+    const s = state[which];
+    const img = await loadImage(s.original.dataUrl);
+    const rect = await computeAutoCrop(img);
+    applyCropToSlot(which, rect, img);
+    s.autoCropped = true;
+    renderers[which]();
+  }
+
+  function loadFromFile(which, file){
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const img = await loadImage(reader.result);
+      const original = { dataUrl: reader.result, width: img.naturalWidth, height: img.naturalHeight };
+      state[which] = {
+        original,
+        dataUrl: original.dataUrl, width: original.width, height: original.height,
+        sizeMB: dataUrlSizeMB(original.dataUrl),
+        cropRect: null, autoCropped: false
+      };
+      renderers[which](true); // show immediately, then auto-crop replaces it
+      autoCropSlot(which);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function setupSlot(which){
+    const captureInput = document.getElementById(which+'CaptureInput');
+    const chooseInput = document.getElementById(which+'ChooseInput');
+    const takeBtn = document.getElementById(which+'TakeBtn');
+    const chooseBtn = document.getElementById(which+'ChooseBtn');
+    const rotateBtn = document.getElementById(which+'RotateBtn');
+    const cropBtn = document.getElementById(which+'CropBtn');
+    const preview = document.getElementById(which+'Preview');
+    const slot = document.getElementById(which+'Slot');
+
+    takeBtn.addEventListener('click', () => captureInput.click());
+    chooseBtn.addEventListener('click', () => chooseInput.click());
+    captureInput.addEventListener('change', (e) => { loadFromFile(which, e.target.files[0]); captureInput.value = ''; });
+    chooseInput.addEventListener('change', (e) => { loadFromFile(which, e.target.files[0]); chooseInput.value = ''; });
+
+    rotateBtn.addEventListener('click', async () => {
+      const s = state[which];
+      if(!s) return;
+      const { dataUrl, width, height } = await rotateImage90(s.original.dataUrl);
+      s.original = { dataUrl, width, height };
+      s.cropRect = null;
+      autoCropSlot(which); // re-guess the crop for the new orientation
+    });
+
+    cropBtn.addEventListener('click', () => openCrop(which));
+
+    function renderSlot(processing){
+      const s = state[which];
+      if(!s){
+        preview.innerHTML = ''; slot.classList.remove('filled');
+        rotateBtn.style.display = 'none'; cropBtn.style.display = 'none';
+        return;
+      }
+      slot.classList.add('filled');
+      rotateBtn.style.display = 'inline-block';
+      cropBtn.style.display = 'inline-block';
+      if(processing){
+        preview.innerHTML = `<img src="${s.dataUrl}"><div class="dims">Auto-cropping…</div>`;
+        return;
+      }
+      const longEdge = Math.max(s.width, s.height);
+      const shortEdge = Math.min(s.width, s.height);
+      const okSize = longEdge >= MIN_LONG_EDGE && shortEdge >= MIN_SHORT_EDGE;
+      const okFile = s.sizeMB <= MAX_FILE_MB;
+      const ok = okSize && okFile;
+      preview.innerHTML = `
+        <img src="${s.dataUrl}">
+        <div class="dims">${s.width}×${s.height}px · ${s.sizeMB.toFixed(1)}MB${s.autoCropped ? ' · auto-cropped' : ''}</div>
+        <div class="${ok ? 'status-ok' : 'status-bad'}">${ok ? '✓ sizing OK' : (okFile ? '✗ resolution too low — retake, or adjust Crop' : '✗ file too large')}</div>
+      `;
+    }
+    renderers[which] = renderSlot;
+  }
+  setupSlot('front');
+  setupSlot('back');
+
+  // Try to silently pick up an existing session on load — see the auth
+  // section below. Same-origin fetch, so cookies are sent automatically.
+  refreshAccessToken();
+
+  function rotateImage90(dataUrl){
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalHeight;
+        canvas.height = img.naturalWidth;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width/2, canvas.height/2);
+        ctx.rotate(Math.PI/2);
+        ctx.drawImage(img, -img.naturalWidth/2, -img.naturalHeight/2);
+        resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.92), width: canvas.width, height: canvas.height });
+      };
+      img.src = dataUrl;
+    });
+  }
+
+  function slotIsValid(s){
+    if(!s) return false;
+    const longEdge = Math.max(s.width, s.height), shortEdge = Math.min(s.width, s.height);
+    return longEdge >= MIN_LONG_EDGE && shortEdge >= MIN_SHORT_EDGE && s.sizeMB <= MAX_FILE_MB;
+  }
+
+  /* ---------- Crop ---------- */
+  let cropTarget = null;
+  let cropRect = { x0:0, y0:0, x1:1, y1:1 };
+
+  function computeAutoCrop(imgEl){
+    return new Promise(resolve => {
+      try{
+        const W = 220;
+        const scale = W / imgEl.naturalWidth;
+        const H = Math.max(1, Math.round(imgEl.naturalHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imgEl, 0, 0, W, H);
+        const data = ctx.getImageData(0, 0, W, H).data;
+        const gray = new Float32Array(W*H);
+        for(let i=0;i<W*H;i++){
+          gray[i] = 0.299*data[i*4] + 0.587*data[i*4+1] + 0.114*data[i*4+2];
+        }
+        const rowEnergy = new Float32Array(H), colEnergy = new Float32Array(W);
+        for(let y=1;y<H-1;y++){
+          for(let x=1;x<W-1;x++){
+            const gx = gray[y*W+x+1] - gray[y*W+x-1];
+            const gy = gray[(y+1)*W+x] - gray[(y-1)*W+x];
+            const mag = Math.sqrt(gx*gx + gy*gy);
+            rowEnergy[y] += mag; colEnergy[x] += mag;
+          }
+        }
+        function bounds(arr){
+          const total = arr.reduce((a,b) => a+b, 0) || 1;
+          const thresh = total * 0.02;
+          let lo = 0, hi = arr.length - 1, cum = 0;
+          for(let i=0;i<arr.length;i++){ cum += arr[i]; if(cum > thresh){ lo = i; break; } }
+          cum = 0;
+          for(let i=arr.length-1;i>=0;i--){ cum += arr[i]; if(cum > thresh){ hi = i; break; } }
+          return [lo, hi];
+        }
+        const [y0, y1] = bounds(rowEnergy);
+        const [x0, x1] = bounds(colEnergy);
+        const pad = 0.02;
+        resolve({
+          x0: Math.max(0, x0/W - pad), y0: Math.max(0, y0/H - pad),
+          x1: Math.min(1, x1/W + pad), y1: Math.min(1, y1/H + pad)
+        });
+      } catch(e){
+        resolve({ x0:0.04, y0:0.04, x1:0.96, y1:0.96 });
+      }
+    });
+  }
+
+  function layoutCropBox(){
+    const img = document.getElementById('cropImg');
+    const stage = document.getElementById('cropStage');
+    const box = document.getElementById('cropBox');
+    requestAnimationFrame(() => {
+      const r = img.getBoundingClientRect();
+      const sr = stage.getBoundingClientRect();
+      const left = r.left - sr.left, top = r.top - sr.top;
+      box.style.left = (left + cropRect.x0*r.width) + 'px';
+      box.style.top = (top + cropRect.y0*r.height) + 'px';
+      box.style.width = ((cropRect.x1-cropRect.x0)*r.width) + 'px';
+      box.style.height = ((cropRect.y1-cropRect.y0)*r.height) + 'px';
+    });
+  }
+
+  function openCrop(which){
+    cropTarget = which;
+    const s = state[which];
+    const img = document.getElementById('cropImg');
+    img.onload = () => {
+      if(s.cropRect){
+        cropRect = { ...s.cropRect };
+        layoutCropBox();
+      } else {
+        computeAutoCrop(img).then(rect => { cropRect = rect; layoutCropBox(); });
+      }
+    };
+    img.src = s.original.dataUrl; // always crop from the full, un-cropped photo
+    document.getElementById('cropModal').classList.add('show');
+  }
+
+  function closeCrop(){
+    document.getElementById('cropModal').classList.remove('show');
+    cropTarget = null;
+  }
+
+  document.getElementById('cropCancelBtn').addEventListener('click', closeCrop);
+  document.getElementById('cropResetBtn').addEventListener('click', () => {
+    cropRect = { x0:0, y0:0, x1:1, y1:1 };
+    layoutCropBox();
+  });
+  document.getElementById('cropAutoBtn').addEventListener('click', () => {
+    computeAutoCrop(document.getElementById('cropImg')).then(rect => { cropRect = rect; layoutCropBox(); });
+  });
+  document.getElementById('cropApplyBtn').addEventListener('click', () => {
+    const img = document.getElementById('cropImg');
+    applyCropToSlot(cropTarget, cropRect, img);
+    state[cropTarget].autoCropped = false; // this crop was set (or confirmed) by hand
+
+    renderers[cropTarget]();
+    closeCrop();
+  });
+
+  function dragHandle(handle, ev){
+    const img = document.getElementById('cropImg');
+    const r = img.getBoundingClientRect();
+    let fx = Math.min(1, Math.max(0, (ev.clientX - r.left)/r.width));
+    let fy = Math.min(1, Math.max(0, (ev.clientY - r.top)/r.height));
+    const MIN = 0.06;
+    if(handle==='tl'){ cropRect.x0 = Math.min(fx, cropRect.x1-MIN); cropRect.y0 = Math.min(fy, cropRect.y1-MIN); }
+    if(handle==='tr'){ cropRect.x1 = Math.max(fx, cropRect.x0+MIN); cropRect.y0 = Math.min(fy, cropRect.y1-MIN); }
+    if(handle==='bl'){ cropRect.x0 = Math.min(fx, cropRect.x1-MIN); cropRect.y1 = Math.max(fy, cropRect.y0+MIN); }
+    if(handle==='br'){ cropRect.x1 = Math.max(fx, cropRect.x0+MIN); cropRect.y1 = Math.max(fy, cropRect.y0+MIN); }
+    layoutCropBox();
+  }
+
+  document.querySelectorAll('.crop-handle').forEach(h => {
+    h.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const handle = h.dataset.h;
+      const move = (ev) => dragHandle(handle, ev);
+      const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    });
+  });
+
+  // Dragging inside the box (not on a handle) moves the whole crop area.
+  document.getElementById('cropBox').addEventListener('pointerdown', (e) => {
+    if(e.target.classList.contains('crop-handle')) return;
+    e.preventDefault();
+    const img = document.getElementById('cropImg');
+    const r = img.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const start = { ...cropRect };
+    const w = cropRect.x1 - cropRect.x0, h = cropRect.y1 - cropRect.y0;
+    const move = (ev) => {
+      const dx = (ev.clientX-startX)/r.width, dy = (ev.clientY-startY)/r.height;
+      const x0 = Math.min(Math.max(0, start.x0+dx), 1-w);
+      const y0 = Math.min(Math.max(0, start.y0+dy), 1-h);
+      cropRect = { x0, y0, x1:x0+w, y1:y0+h };
+      layoutCropBox();
+    };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  });
+
+  window.addEventListener('resize', () => {
+    if(document.getElementById('cropModal').classList.contains('show')) layoutCropBox();
+  });
+
+  /* ---------- PDF building ---------- */
+  async function buildPdf(){
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 36;
+
+    function place(dataUrl, w, h){
+      const maxW = pageW - margin*2, maxH = pageH - margin*2;
+      const scale = Math.min(maxW/w, maxH/h);
+      const drawW = w*scale, drawH = h*scale;
+      const x = (pageW - drawW)/2, y = (pageH - drawH)/2;
+      pdf.addImage(dataUrl, 'JPEG', x, y, drawW, drawH);
+    }
+
+    const f = state.front;
+    place(f.dataUrl, f.width, f.height);
+
+    if(state.back){
+      pdf.addPage();
+      const b = state.back;
+      place(b.dataUrl, b.width, b.height);
+    }
+    return pdf.output('blob');
+  }
+
+  function sanitize(str){
+    return str.replace(/[\\/:*?"<>|]/g, '').trim();
+  }
+
+  /* ---------- Google auth / Drive ----------
+     Auth is handled by three backend endpoints (see /functions/api):
+       /api/auth-start    - redirects to Google's consent screen (first time only)
+       /api/auth-callback - Google redirects back here; server stores a refresh token
+       /api/auth-token    - exchanges the stored refresh token for a fresh access
+                             token, on request, with zero user interaction
+     The refresh token itself never reaches the browser — only short-lived
+     access tokens do, and those are kept in memory only, never in
+     localStorage/sessionStorage. */
+
+  function setConn(on, label){
+    document.getElementById('connDot').classList.toggle('on', on);
+    document.getElementById('connLabel').textContent = label;
+  }
+
+  async function refreshAccessToken(){
+    try{
+      const res = await fetch('/api/auth-token');
+      if(!res.ok){
+        accessToken = null;
+        setConn(false, "Not connected to Google Drive");
+        document.getElementById('connectBtn').style.display = 'inline-block';
+        return false;
+      }
+      const data = await res.json();
+      accessToken = data.access_token;
+      tokenExpiresAt = Date.now() + ((data.expires_in || 3600) * 1000);
+      setConn(true, "Connected to Google Drive");
+      document.getElementById('connectBtn').style.display = 'none';
+      return true;
+    } catch(e){
+      accessToken = null;
+      setConn(false, "Not connected to Google Drive");
+      document.getElementById('connectBtn').style.display = 'inline-block';
+      return false;
+    }
+  }
+
+  // Called before any Drive API call. Reuses the in-memory token if it's
+  // still fresh; otherwise asks the backend for a new one — silently, no
+  // popup, works the same in a home-screen app as in a regular browser tab.
+  async function ensureAccessToken(){
+    if(accessToken && Date.now() < tokenExpiresAt - 60000) return true;
+    return refreshAccessToken();
+  }
+
+  document.getElementById('connectBtn').addEventListener('click', () => {
+    window.location.href = '/api/auth-start';
+  });
+
+  function handleAuthLost(){
+    accessToken = null;
+    setConn(false, "Not connected to Google Drive");
+    document.getElementById('connectBtn').style.display = 'inline-block';
+  }
+
+  async function driveFetch(url, opts={}){
+    opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + accessToken });
+    const res = await fetch(url, opts);
+    if(res.status === 401){ handleAuthLost(); throw new Error('Google session expired — click "Authorize Google Drive" and try again.'); }
+    if(!res.ok){ const t = await res.text(); throw new Error('Drive API error: ' + res.status + ' ' + t); }
+    return res.json();
+  }
+
+  async function findFolder(name, parentId){
+    let q = `name='${name.replace(/'/g,"\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    if(parentId) q += ` and '${parentId}' in parents`;
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`;
+    const data = await driveFetch(url);
+    return (data.files && data.files[0]) ? data.files[0].id : null;
+  }
+
+  async function createFolder(name, parentId){
+    const metadata = { name, mimeType: 'application/vnd.google-apps.folder' };
+    if(parentId) metadata.parents = [parentId];
+    const data = await driveFetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(metadata)
+    });
+    return data.id;
+  }
+
+  async function findOrCreateFolder(name, parentId){
+    let id = await findFolder(name, parentId);
+    if(!id) id = await createFolder(name, parentId);
+    return id;
+  }
+
+  async function uploadPdf(blob, filename, parentId){
+    const metadata = { name: filename, parents: [parentId], mimeType: 'application/pdf' };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', blob);
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken },
+      body: form
+    });
+    if(res.status === 401){ handleAuthLost(); throw new Error('Google session expired — click "Authorize Google Drive" and try again.'); }
+    if(!res.ok){ const t = await res.text(); throw new Error('Upload failed: ' + res.status + ' ' + t); }
+    return res.json();
+  }
+
+  /* ---------- Submit ---------- */
+  document.getElementById('submitBtn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('statusMsg');
+    statusEl.className = ''; statusEl.textContent = '';
+
+    const dateVal = dateInput.value;
+    const where = document.getElementById('whereInput').value.trim();
+    const what = document.getElementById('whatInput').value.trim();
+
+    if(!dateVal || !where || !what || !state.front){
+      statusEl.className = 'err';
+      statusEl.textContent = 'Date, Where, What it\'s for, and the front photo are all required.';
+      return;
+    }
+    if(!slotIsValid(state.front)){
+      statusEl.className = 'err';
+      statusEl.textContent = 'Front photo doesn\'t meet the sizing check — retake at a higher resolution.';
+      return;
+    }
+    if(state.back && !slotIsValid(state.back)){
+      statusEl.className = 'err';
+      statusEl.textContent = 'Back photo doesn\'t meet the sizing check — retake, or remove it.';
+      return;
+    }
+    if(!(await ensureAccessToken())){
+      statusEl.className = 'err';
+      statusEl.textContent = 'Google Drive isn\'t connected — click "Authorize Google Drive" above before filing a receipt.';
+      return;
+    }
+
+    statusEl.textContent = 'Building PDF…';
+    const period = periodForDate(dateVal);
+    const filename = `${dateVal} - ${sanitize(where)} - ${sanitize(what)} - Scanned.pdf`;
+    const blob = await buildPdf();
+
+    try{
+      statusEl.textContent = 'Finding "My Receipts" in Drive…';
+      if(!receiptsFolderId) receiptsFolderId = await findOrCreateFolder('My Receipts', null);
+      statusEl.textContent = `Finding "${period.label}" folder…`;
+      const periodFolderId = await findOrCreateFolder(period.label, receiptsFolderId);
+      statusEl.textContent = 'Uploading…';
+      const result = await uploadPdf(blob, filename, periodFolderId);
+      statusEl.className = 'ok';
+      statusEl.textContent = `Filed as "${filename}" in My Receipts / ${period.label}.`;
+      const stamp = document.getElementById('filedStamp');
+      stamp.classList.add('show');
+      setTimeout(() => stamp.classList.remove('show'), 2200);
+      document.getElementById('folderNote').innerHTML = result.webViewLink
+        ? `<a href="${result.webViewLink}" target="_blank" rel="noopener">Open in Drive →</a>` : '';
+      // reset form for next receipt
+      state.front = null; state.back = null;
+      renderers.front(); renderers.back();
+      document.getElementById('whereInput').value = '';
+      document.getElementById('whatInput').value = '';
+    } catch(err){
+      statusEl.className = 'err';
+      statusEl.textContent = 'Drive upload failed: ' + err.message;
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
